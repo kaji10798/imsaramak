@@ -1,31 +1,672 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Imsakiyah Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Imsakiyah Pro - Modern & Intuitif</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { 
+                extend: { 
+                    colors: { 
+                        primary: '#0d9488', 
+                        primaryDark: '#0f766e',
+                        accent: '#f59e0b'
+                    } 
+                } 
+            }
+        }
+    </script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        html, body {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #f8fafc;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; padding-bottom: 80px; }
+        .arabic { font-family: 'Amiri', serif; }
+        #map { height: 280px; width: 100%; display: block; z-index: 1; border-radius: 1rem; position: relative; }
+        .gps-btn { position: absolute; top: 12px; right: 12px; z-index: 1000; background: white; padding: 10px 12px; border-radius: 50%; cursor: pointer; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); transition: all 0.2s; }
+        .gps-btn:hover { background: #f1f5f9; }
+        @media (min-width: 768px) { body { padding-bottom: 0; } .mobile-nav { display: none; } }
+        html { scroll-behavior: smooth; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-100 transition-colors duration-300">
 
-    <iframe src="https://script.google.com/macros/s/AKfycbz8XxsI3-JcmXuyAPCceePbtNfPFudNQbizL97t8VMiXhXMoI_zboaXZeo_RDaGt155/exec" allowfullscreen></iframe>
+    <div id="toastContainer" class="fixed top-5 right-5 z-[9999] flex flex-col space-y-2 pointer-events-none"></div>
 
+    <header class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50 transition-colors">
+        <div class="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-primary/10 dark:bg-primary/20 text-primary p-2.5 rounded-2xl">
+                    <i class="fa-solid fa-mosque text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Imsakiyah Pro</h1>
+                    <p class="text-xs arabic text-primary dark:text-teal-400 font-semibold">بسم الله الرحمن الرحيم</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2">
+                <button id="themeToggle" class="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300">
+                    <i class="fa-solid fa-moon text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+        
+        <section id="section-map" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-2">
+                <div>
+                    <h2 class="font-bold text-lg text-slate-900 dark:text-white flex items-center">
+                        <span class="bg-primary/10 text-primary p-2 rounded-xl mr-2.5 text-sm"><i class="fa-solid fa-location-crosshairs"></i></span>
+                        Pilih Titik Lokasi
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 ml-10">Geser pin pada peta, gunakan GPS, atau cari nama wilayah secara instan.</p>
+                </div>
+                <div class="w-full md:w-72 flex space-x-1.5">
+                    <input type="text" id="searchBox" placeholder="Cari kota, kecamatan, desa..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition">
+                    <button onclick="cariLokasi()" class="bg-primary hover:bg-primaryDark text-white px-4 py-2 rounded-xl text-sm transition shadow-sm font-medium flex-shrink-0">
+                        <i class="fa-solid fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="relative mb-5">
+                <div id="map" class="bg-slate-200 dark:bg-slate-800 animate-pulse rounded-2xl flex items-center justify-center text-sm text-slate-500 shadow-inner">Memuat Peta Interaktif...</div>
+                <button onclick="gunakanLokasiSaatIni()" class="gps-btn dark:bg-slate-800 dark:text-teal-400" title="Gunakan Lokasi Saat Ini">
+                    <i class="fa-solid fa-location-crosshairs text-primary dark:text-teal-400"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <span class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Lintang (Lat)</span>
+                    <input type="text" id="lat" readonly class="w-full bg-transparent font-mono text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none">
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <span class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Bujur (Lng)</span>
+                    <input type="text" id="lng" readonly class="w-full bg-transparent font-mono text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none">
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <span class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Elevasi DPL</span>
+                    <div class="flex items-center">
+                        <input type="text" id="elev" readonly class="w-full bg-transparent font-mono text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none">
+                        <span class="text-xs text-slate-400 font-medium ml-1">m</span>
+                    </div>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <span class="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Zona Waktu</span>
+                    <input type="text" id="timezone" readonly class="w-full bg-transparent font-mono text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="mt-3.5 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between transition focus-within:ring-2 focus-within:ring-primary/50">
+                <div class="w-full">
+                    <span class="block text-[11px] font-semibold text-primary dark:text-teal-400 uppercase tracking-wider mb-0.5">Nama Wilayah / Dusun (Dapat Diedit Manual)</span>
+                    <input type="text" id="lokasiNama" class="w-full bg-transparent font-bold text-sm text-slate-800 dark:text-slate-100 focus:outline-none" placeholder="Contoh: Dusun Karangjati, RT 01/RW 02">
+                </div>
+                <div class="text-primary dark:text-teal-400 text-lg px-3"><i class="fa-solid fa-pen-to-square"></i></div>
+            </div>
+        </section>
+
+        <section id="section-settings" class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
+            <h2 class="font-bold text-lg text-slate-900 dark:text-white flex items-center mb-4">
+                <span class="bg-primary/10 text-primary p-2 rounded-xl mr-2.5 text-sm"><i class="fa-solid fa-sliders"></i></span>
+                Parameter Kalkulasi Jadwal
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Tanggal Mulai Masehi</label>
+                    <input type="date" id="startDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Tanggal Selesai Masehi</label>
+                    <input type="date" id="endDate" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Ihtiyati</label>
+                        <select id="ihtiyati" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition">
+                            <option value="0">0 Menit</option>
+                            <option value="1.5">1.5 Menit</option>
+                            <option value="2" selected>2 Menit</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Engine</label>
+                        <select id="engine" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition">
+                            <option value="klasik">VBA Klasik</option>
+                            <option value="modern">Meeus Modern</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button onclick="generateJadwal()" class="w-full mt-5 bg-primary hover:bg-primaryDark text-white py-3.5 rounded-2xl font-bold transition shadow-md shadow-primary/20 flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-calculator"></i>
+                <span>Generate Jadwal Imsakiyah</span>
+            </button>
+        </section>
+
+        <section id="section-result" class="hidden bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 transition-all">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-5 gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                    <h2 class="font-bold text-lg text-slate-900 dark:text-white flex items-center">
+                        <span class="bg-primary/10 text-primary p-2 rounded-xl mr-2.5 text-sm"><i class="fa-solid fa-table-list"></i></span>
+                        Hasil Kalkulasi Imsakiyah
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 ml-10">Dilengkapi format waktu presisi hingga detik.</p>
+                </div>
+                <div class="flex items-center space-x-2 w-full md:w-auto">
+                    <button onclick="exportPDF()" class="flex-1 md:flex-none bg-rose-500 hover:bg-rose-600 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-file-pdf"></i><span>Unduh PDF</span>
+                    </button>
+                    <button onclick="saveToSheets(this)" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition shadow-sm flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-file-excel"></i><span>Simpan Sheet</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                <table class="w-full text-xs md:text-sm text-center border-collapse" id="jadwalTable">
+                    <thead>
+                        <tr class="bg-primary text-white font-semibold">
+                            <th class="p-3">Tgl Masehi</th>
+                            <th class="p-3">Ramadan</th>
+                            <th class="p-3">Imsak</th>
+                            <th class="p-3">Subuh</th>
+                            <th class="p-3">Terbit</th>
+                            <th class="p-3">Dhuha</th>
+                            <th class="p-3">Dzuhur</th>
+                            <th class="p-3">Ashar</th>
+                            <th class="p-3">Maghrib</th>
+                            <th class="p-3">Isya</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <nav class="mobile-nav fixed bottom-4 left-4 right-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-xl border border-slate-200/80 dark:border-slate-800 rounded-2xl flex justify-around p-2.5 z-50">
+        <button onclick="goTo('section-map')" class="flex flex-col items-center text-primary py-1 px-4 rounded-xl transition">
+            <i class="fa-solid fa-location-dot text-base mb-0.5"></i>
+            <span class="text-[10px] font-bold">Lokasi</span>
+        </button>
+        <button onclick="goTo('section-settings')" class="flex flex-col items-center text-slate-400 hover:text-primary dark:hover:text-primary py-1 px-4 rounded-xl transition">
+            <i class="fa-solid fa-sliders text-base mb-0.5"></i>
+            <span class="text-[10px] font-bold">Parameter</span>
+        </button>
+        <button onclick="goTo('section-result')" class="flex flex-col items-center text-slate-400 hover:text-primary dark:hover:text-primary py-1 px-4 rounded-xl transition">
+            <i class="fa-solid fa-table-list text-base mb-0.5"></i>
+            <span class="text-[10px] font-bold">Jadwal</span>
+        </button>
+    </nav>
+
+    <script>
+        function showToast(message, type = 'info') {
+            var container = document.getElementById('toastContainer');
+            var toast = document.createElement('div');
+            var bgColors = {
+                'info': 'bg-slate-900 text-white dark:bg-slate-800',
+                'success': 'bg-primary text-white',
+                'error': 'bg-rose-600 text-white'
+            };
+            toast.className = "pointer-events-auto flex items-center px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold transition-all transform translate-y-2 opacity-0 " + (bgColors[type] || bgColors['info']);
+            var icon = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info');
+            toast.innerHTML = '<i class="fa-solid ' + icon + ' mr-2.5 text-sm"></i><span>' + message + '</span>';
+            container.appendChild(toast);
+            setTimeout(function() { toast.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+            setTimeout(function() {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 3000);
+        }
+
+        function goTo(id) {
+            var el = document.getElementById(id);
+            if(el) {
+                el.classList.remove('hidden');
+                el.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        var themeBtn = document.getElementById('themeToggle');
+        var htmlEl = document.documentElement;
+        themeBtn.addEventListener('click', function() {
+            htmlEl.classList.toggle('dark');
+            var icon = themeBtn.querySelector('i');
+            if (htmlEl.classList.contains('dark')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+
+        document.getElementById('startDate').value = "2024-03-12";
+        document.getElementById('endDate').value = "2024-04-09";
+
+        var map, marker;
+        var rawLat = -6.2000; 
+        var rawLng = 106.8166;
+
+        function initMap() {
+            var mapEl = document.getElementById('map');
+            mapEl.classList.remove('animate-pulse', 'flex', 'items-center', 'justify-center', 'bg-slate-200');
+            mapEl.innerText = ''; 
+
+            // Inisialisasi peta default Jakarta (TANPA meminta GPS otomatis)
+            map = L.map('map', {zoomControl: false}).setView([rawLat, rawLng], 5);
+            L.control.zoom({position: 'bottomright'}).addTo(map);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            var iconDefault = L.icon({
+                iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+            });
+
+            marker = L.marker([rawLat, rawLng], {draggable: true, icon: iconDefault}).addTo(map);
+            updateCoords(rawLat, rawLng);
+            
+            setTimeout(function() { map.invalidateSize(); }, 500);
+
+            marker.on('dragend', function (e) {
+                var pos = marker.getLatLng();
+                updateCoords(pos.lat, pos.lng);
+            });
+
+            map.on('click', function(e) {
+                var pos = e.latlng;
+                marker.setLatLng(pos);
+                updateCoords(pos.lat, pos.lng);
+            });
+        }
+
+        setTimeout(initMap, 500);
+
+        // FUNGSI GPS: Hanya aktif bila tombol floating GPS ditekan oleh pengguna
+        function gunakanLokasiSaatIni() {
+            if (!navigator.geolocation) {
+                showToast("GPS tidak didukung oleh browser Anda.", "error");
+                return;
+            }
+
+            showToast("Mencari lokasi GPS...", "info");
+
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    var lat = pos.coords.latitude;
+                    var lng = pos.coords.longitude;
+                    map.setView([lat, lng], 13);
+                    marker.setLatLng([lat, lng]);
+                    updateCoords(lat, lng);
+                    showToast("Lokasi GPS berhasil dimuat!", "success");
+                },
+                function(err) {
+                    showToast("Izin lokasi ditolak/tidak aktif di HP Anda.", "error");
+                },
+                { timeout: 8000, enableHighAccuracy: true }
+            );
+        }
+
+        function cariLokasi() {
+            var query = document.getElementById('searchBox').value;
+            if(!query) {
+                showToast("Masukkan nama wilayah yang ingin dicari!", "error");
+                return;
+            }
+            
+            fetch("https://nominatim.openstreetmap.org/search?format=json&q=" + encodeURIComponent(query))
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    if(data && data.length > 0) {
+                        var lat = parseFloat(data[0].lat);
+                        var lon = parseFloat(data[0].lon);
+                        map.setView([lat, lon], 12);
+                        marker.setLatLng([lat, lon]);
+                        updateCoords(lat, lon);
+                        showToast("Wilayah ditemukan!", "success");
+                    } else {
+                        showToast("Wilayah tidak ditemukan. Coba kata kunci lain.", "error");
+                    }
+                }).catch(function() { showToast("Gagal mencari wilayah.", "error"); });
+        }
+
+        function formatDMS(deg, isLat) {
+            var d = Math.abs(deg);
+            var degInt = Math.floor(d);
+            var minFloat = (d - degInt) * 60;
+            var minInt = Math.floor(minFloat);
+            var secInt = Math.round((minFloat - minInt) * 60);
+            if (secInt >= 60) { secInt = 0; minInt++; }
+            if (minInt >= 60) { minInt = 0; degInt++; }
+            var cardinal = isLat ? (deg < 0 ? " LS" : " LU") : (deg < 0 ? " BB" : " BT");
+            return degInt + "° " + minInt + "' " + secInt + "\"" + cardinal;
+        }
+
+        function updateCoords(lat, lng) {
+            rawLat = lat;
+            rawLng = lng;
+
+            document.getElementById('lat').value = formatDMS(lat, true);
+            document.getElementById('lng').value = formatDMS(lng, false);
+            
+            var tz = "WIB"; var ls = 105;
+            if (lng >= 112.5 && lng < 127.5) { tz = "WITA"; ls = 120; }
+            else if (lng >= 127.5) { tz = "WIT"; ls = 135; }
+            
+            document.getElementById('timezone').value = tz + " (Ls: " + ls + "°)";
+            document.getElementById('timezone').dataset.ls = ls;
+
+            fetch("https://api.open-elevation.com/api/v1/lookup?locations=" + lat + "," + lng)
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    var h = data.results[0].elevation;
+                    document.getElementById('elev').value = h > 0 ? h : 0;
+                }).catch(function() { document.getElementById('elev').value = 0; });
+            
+            fetch("https://nominatim.openstreetmap.org/reverse?lat=" + lat + "&lon=" + lng + "&format=json")
+                .then(function(res) { return res.json(); })
+                .then(function(data) {
+                    var address = data.address;
+                    if(address) {
+                        document.getElementById('lokasiNama').value = address.village || address.city || address.county || data.display_name.split(',')[0];
+                    }
+                }).catch(function() { document.getElementById('lokasiNama').value = "Koordinat Kustom"; });
+        }
+
+        var EngineKlasik = {
+            rad: Math.PI / 180, deg: 180 / Math.PI,
+            sin: function(x) { return Math.sin(x * this.rad); },
+            cos: function(x) { return Math.cos(x * this.rad); },
+            tan: function(x) { return Math.tan(x * this.rad); },
+            asin: function(x) { return Math.asin(x) * this.deg; },
+            acos: function(x) { return Math.acos(x) * this.deg; },
+            atan: function(x) { return Math.atan(x) * this.deg; },
+            acot: function(x) { return Math.atan(1 / x) * this.deg; },
+            
+            dateToExcelEpoch: function(dateStr) {
+                var d = new Date(dateStr);
+                var tzOffset = d.getTimezoneOffset() * 60000;
+                return (d.getTime() - tzOffset) / 86400000 + 25569;
+            },
+            alwasat: function(xx) {
+                var wa = ((((59 / 60) + (8.3301665 / 3600)) * xx) + 278.399470485783) / 360;
+                return (wa - Math.floor(wa)) * 360;
+            },
+            alhosoh: function(xx) {
+                var ho = ((((59 / 60) + (8.150785 / 3600)) * xx) + 177.035629843322) / 360;
+                return (ho - Math.floor(ho)) * 360;
+            },
+            darojatussyams: function(xx) {
+                var hosoh = this.alhosoh(xx);
+                var wasat = this.alwasat(xx);
+                var takdil = (-1 - 55.5 / 60) * this.sin(hosoh) + 0.02 * this.sin(hosoh * 2);
+                return wasat + takdil;
+            },
+            mail: function(xx) {
+                var DM = this.darojatussyams(xx);
+                return this.asin(this.sin(DM) * this.sin(23 + 26 / 60 + 40 / 3600));
+            },
+            arm: function(TUL) {
+                var ar = this.atan(this.cos(23.4444444) * this.tan(TUL));
+                if (TUL > 270) return ar + 360;
+                else if (TUL > 90) return ar + 180;
+                return ar;
+            },
+            tafaut: function(xx) {
+                var wasat = this.alwasat(xx);
+                var TUUL = this.darojatussyams(xx);
+                var REKTA = this.arm(TUUL);
+                return (wasat - REKTA) / 15;
+            },
+            irtifaMgr: function(ard, Ttmp, dekl) {
+                var dtamkin = this.asin(this.sin(-48.5 / 60) / this.cos(ard) / this.cos(dekl));
+                var dp = -1.76 * Math.sqrt(Ttmp) / 60;
+                return dtamkin + dp;
+            },
+            
+            hitungWaktu: function(lat, lon, ls, elev, dateStr) {
+                var xx = this.dateToExcelEpoch(dateStr);
+                var dekl = this.mail(xx);
+                var taf = ((lon - ls) / 15) + this.tafaut(xx);
+                
+                var hMaghrib = this.irtifaMgr(lat, elev, dekl);
+                var haMaghrib = this.acos(-this.tan(lat) * this.tan(dekl) + (1/this.cos(lat)) * (1/this.cos(dekl)) * this.sin(hMaghrib)) / 15;
+                var haIsya = this.acos(-this.tan(lat) * this.tan(dekl) + (1/this.cos(lat)) * (1/this.cos(dekl)) * this.sin(-18)) / 15;
+                var haSubuh = this.acos(-this.tan(lat) * this.tan(dekl) + (1/this.cos(lat)) * (1/this.cos(dekl)) * this.sin(-20)) / 15;
+                var haTerbit = this.acos(-(-this.tan(lat) * this.tan(dekl) + (1/this.cos(lat)) * (1/this.cos(dekl)) * this.sin(hMaghrib))) / 15;
+                var haDhuha = this.acos(-(-this.tan(lat) * this.tan(dekl) + (1/this.cos(lat)) * (1/this.cos(dekl)) * this.sin(4.5))) / 15;
+                
+                var ir = this.acot(this.tan(Math.abs(lat - dekl)) + 1);
+                var haAshar = this.acos(-this.tan(lat) * this.tan(dekl) + (1/this.cos(lat)) * (1/this.cos(dekl)) * this.sin(ir)) / 15;
+
+                return {
+                    dzuhur: 12 - taf, ashar: 12 + haAshar - taf,
+                    maghrib: 12 + haMaghrib - taf, isya: 12 + haIsya - taf,
+                    subuh: 12 - haSubuh - taf, terbit: 12 - haTerbit - taf,
+                    dhuha: 12 - haDhuha - taf
+                };
+            }
+        };
+
+        var EngineModern = {
+            rad: Math.PI / 180, deg: 180 / Math.PI,
+            hitungWaktu: function(lat, lon, ls, elev, dateStr) {
+                var d = new Date(dateStr);
+                var d2000 = (d.getTime() / 86400000) - 10957.5;
+                
+                var g = (357.529 + 0.98560028 * d2000) * this.rad;
+                var q = 280.459 + 0.98564736 * d2000;
+                var L = (q + 1.915 * Math.sin(g) + 0.020 * Math.sin(2 * g)) % 360;
+                
+                var e = (23.439 - 0.00000036 * d2000) * this.rad;
+                var Lrad = L * this.rad;
+                
+                var ra = Math.atan2(Math.cos(e) * Math.sin(Lrad), Math.cos(Lrad)) * this.deg;
+                ra = (ra + 360) % 360;
+                
+                var dekl = Math.asin(Math.sin(e) * Math.sin(Lrad)) * this.deg;
+                var eqT = (q / 15) - (ra / 15);
+                var taf = ((lon - ls) / 15) + eqT;
+
+                var H_std = function(sudut) {
+                    var val = (Math.sin(sudut * EngineModern.rad) - Math.sin(lat * EngineModern.rad) * Math.sin(dekl * EngineModern.rad)) / 
+                              (Math.cos(lat * EngineModern.rad) * Math.cos(dekl * EngineModern.rad));
+                    if (val > 1) val = 1;
+                    if (val < -1) val = -1;
+                    return Math.acos(val) * EngineModern.deg / 15;
+                };
+
+                var dip = 1.76 * Math.sqrt(elev) / 60;
+                var ufuk = -0.833 - dip;
+                
+                var hMaghrib = H_std(ufuk);
+                var hIsya = H_std(-18);
+                var hSubuh = H_std(-20);
+                var hDhuha = H_std(4.5);
+                
+                var asharAlt = Math.atan(1 / (1 + Math.tan(Math.abs(lat - dekl) * this.rad))) * this.deg;
+                var hAshar = H_std(asharAlt);
+
+                return {
+                    dzuhur: 12 - taf, ashar: 12 + hAshar - taf,
+                    maghrib: 12 + hMaghrib - taf, isya: 12 + hIsya - taf,
+                    subuh: 12 - hSubuh - taf, terbit: 12 - hMaghrib - taf,
+                    dhuha: 12 - hDhuha - taf
+                };
+            }
+        };
+
+        var currentJadwalData = [];
+
+        function formatJam(decimalHour) {
+            decimalHour = (decimalHour % 24 + 24) % 24;
+            var totalSeconds = Math.round(decimalHour * 3600);
+            var jam = Math.floor(totalSeconds / 3600);
+            var mnt = Math.floor((totalSeconds % 3600) / 60);
+            var dtk = totalSeconds % 60;
+            
+            if (dtk === 60) { dtk = 0; mnt += 1; }
+            if (mnt === 60) { mnt = 0; jam += 1; }
+            
+            var strJam = (jam < 10 ? '0' : '') + jam;
+            var strMnt = (mnt < 10 ? '0' : '') + mnt;
+            var strDtk = (dtk < 10 ? '0' : '') + dtk;
+            
+            return strJam + "." + strMnt + "." + strDtk;
+        }
+
+        function generateJadwal() {
+            var lat = rawLat;
+            var lon = rawLng;
+            var elev = parseFloat(document.getElementById('elev').value);
+            var ls = parseFloat(document.getElementById('timezone').dataset.ls);
+            var ihtiyati = parseFloat(document.getElementById('ihtiyati').value) / 60;
+            var engineChoice = document.getElementById('engine').value;
+            var startStr = document.getElementById('startDate').value;
+            var endStr = document.getElementById('endDate').value;
+            
+            var start = new Date(startStr);
+            var end = new Date(endStr);
+            
+            if (isNaN(lat) || isNaN(start.getTime())) {
+                showToast("Tunggu titik lokasi dimuat & lengkapi tanggal!", "error");
+                return;
+            }
+
+            var Engine = engineChoice === 'klasik' ? EngineKlasik : EngineModern;
+            var tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            currentJadwalData = [];
+            
+            var hari = 1;
+            for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                var dateStr = d.toISOString().split('T')[0];
+                var w = Engine.hitungWaktu(lat, lon, ls, elev, dateStr);
+                
+                var Imsak  = formatJam(w.subuh + ihtiyati - (10 / 60));
+                var Subuh  = formatJam(w.subuh + ihtiyati);
+                var Terbit = formatJam(w.terbit);
+                var Dhuha  = formatJam(w.dhuha + ihtiyati);
+                var Dzuhur = formatJam(w.dzuhur + ihtiyati);
+                var Ashar  = formatJam(w.ashar + ihtiyati);
+                var Maghrib= formatJam(w.maghrib + ihtiyati);
+                var Isya   = formatJam(w.isya + ihtiyati);
+
+                var rowBg = (hari % 2 === 0) ? 'bg-slate-50 dark:bg-slate-800/40' : 'bg-white dark:bg-slate-900';
+
+                var tr = document.createElement('tr');
+                tr.className = rowBg + " border-b border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors";
+                
+                var tglAwal = dateStr.split('-');
+                var formatTgl = tglAwal[2] + "/" + tglAwal[1] + "/" + tglAwal[0];
+
+                tr.innerHTML = 
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800 font-mono text-xs'>" + formatTgl + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800 font-bold arabic text-base'>" + hari + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800 font-bold text-amber-600 dark:text-amber-400'>" + Imsak + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800 font-bold text-rose-600 dark:text-rose-400'>" + Subuh + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800 text-slate-400'>" + Terbit + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800'>" + Dhuha + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800'>" + Dzuhur + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800'>" + Ashar + "</td>" +
+                    "<td class='p-3 border-r border-slate-100 dark:border-slate-800 font-bold text-primary dark:text-teal-400'>" + Maghrib + "</td>" +
+                    "<td class='p-3'>" + Isya + "</td>";
+                
+                tbody.appendChild(tr);
+                currentJadwalData.push([formatTgl, hari, Imsak, Subuh, Terbit, Dhuha, Dzuhur, Ashar, Maghrib, Isya]);
+                hari++;
+            }
+            
+            var resultEl = document.getElementById('section-result');
+            resultEl.classList.remove('hidden');
+            resultEl.scrollIntoView({ behavior: 'smooth' });
+            showToast("Jadwal Imsakiyah berhasil dibuat!", "success");
+        }
+
+        function exportPDF() {
+            var jsPDF = window.jspdf.jsPDF;
+            var doc = new jsPDF();
+            
+            var wilayah = document.getElementById('lokasiNama').value || "Lokasi Custom";
+            var lsName = document.getElementById('timezone').value;
+            
+            var latDMS = formatDMS(rawLat, true);
+            var lonDMS = formatDMS(rawLng, false);
+            var elev = document.getElementById('elev').value;
+            
+            doc.setFontSize(16);
+            doc.text("JADWAL IMSAKIYAH RAMADHAN", 105, 15, { align: "center" });
+            doc.setFontSize(10);
+            doc.text("Daerah: " + wilayah, 105, 22, { align: "center" });
+            doc.text("Koordinat: " + latDMS + ", " + lonDMS + " | Elevasi: " + elev + "m | Zona: " + lsName, 105, 27, { align: "center" });
+            
+            doc.autoTable({
+                startY: 35,
+                head: [['Tgl', 'Ramadan', 'Imsak', 'Subuh', 'Terbit', 'Dhuha', 'Dzuhur', 'Ashar', 'Maghrib', 'Isya']],
+                body: currentJadwalData,
+                theme: 'grid',
+                headStyles: { fillColor: [13, 148, 136] }, 
+                styles: { halign: 'center', fontSize: 9 },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                didParseCell: function(data) {
+                    if (data.section === 'body') {
+                        if (data.column.index === 2) { 
+                            data.cell.styles.fontStyle = 'bold';
+                            data.cell.styles.textColor = [217, 119, 6]; 
+                        } else if (data.column.index === 3) { 
+                            data.cell.styles.fontStyle = 'bold';
+                            data.cell.styles.textColor = [225, 29, 72]; 
+                        } else if (data.column.index === 8) { 
+                            data.cell.styles.fontStyle = 'bold';
+                            data.cell.styles.textColor = [13, 148, 136]; 
+                        }
+                    }
+                }
+            });
+            
+            var fileName = "Imsakiyah_" + wilayah.split(' ').join('_') + ".pdf";
+            doc.save(fileName);
+            showToast("Dokumen PDF berhasil diunduh!", "success");
+        }
+
+        function saveToSheets(btn) {
+        var originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Menyimpan...';
+        
+        // TEMPELKAN URL WEB APP GAS KAMU DI SINI
+        var webAppUrl = "https://script.google.com/macros/s/AKfycbz8XxsI3-JcmXuyAPCceePbtNfPFudNQbizL97t8VMiXhXMoI_zboaXZeo_RDaGt155/exec";
+
+        fetch(webAppUrl, {
+            method: "POST",
+            mode: "no-cors", // Penanganan CORS untuk Google Web App
+            headers: { "Content-Type": "text/plain" },
+            body: JSON.stringify({ data: currentJadwalData })
+        })
+        .then(function() {
+            showToast("Permintaan simpan dikirim ke Google Sheets!", "success");
+            btn.innerHTML = originalText;
+        })
+        .catch(function(err) {
+            showToast("Gagal menyimpan data: " + err, "error");
+            btn.innerHTML = originalText;
+        });
+    }
+    </script>
 </body>
 </html>
